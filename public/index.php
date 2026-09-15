@@ -52,8 +52,67 @@ if ($path === '/logout' && $method === 'POST') {
     App::redirect('/login');
 }
 
-if ($path === '/' && $method === 'GET') {
+// `/` becomes the day view in phase 3 (§5, "the screen the app opens on").
+// Until then both paths are the assistant, and /assistant is the one the
+// navigation points at so the link does not move when the day view lands.
+if (($path === '/' || $path === '/assistant') && $method === 'GET') {
     $app->render('assistant', ['title' => 'Assistant — Marketing cover']);
+}
+
+// ---- Cards (BRIEF.md §3 and §8) -------------------------------------------
+
+if ($path === '/cards' && $method === 'GET') {
+    $contextParam = is_string($_GET['context'] ?? null) ? $_GET['context'] : '';
+    $activeContexts = [];
+    foreach (array_filter(explode(',', $contextParam)) as $key) {
+        if (Contexts::find($key) !== null) {
+            $activeContexts[] = $key;
+        }
+    }
+    $activeStatus = is_string($_GET['status'] ?? null) ? $_GET['status'] : '';
+    if ($activeStatus !== 'open' && !in_array($activeStatus, Cards::STATUSES, true)) {
+        $activeStatus = '';
+    }
+    $sort = ($_GET['sort'] ?? '') === 'title' ? 'title' : 'due';
+
+    $app->render('cards', [
+        'title' => 'All work — Marketing cover',
+        'cards' => $app->cards()->all($activeContexts, $activeStatus, $sort),
+        'activeContexts' => $activeContexts,
+        'activeStatus' => $activeStatus,
+        'sort' => $sort,
+        'totalCards' => $app->cards()->countAll(),
+    ]);
+}
+
+if ($path === '/cards/new' && $method === 'GET') {
+    require APP_ROOT . '/src/handlers/cards.php';
+    cover_card_new($app);
+}
+
+if ($path === '/cards' && $method === 'POST') {
+    require APP_ROOT . '/src/handlers/cards.php';
+    cover_card_save($app, null);
+}
+
+if (preg_match('#^/cards/(\d+)$#', $path, $m) === 1) {
+    require APP_ROOT . '/src/handlers/cards.php';
+    if ($method === 'POST') {
+        cover_card_save($app, (int) $m[1]);
+    }
+    if ($method === 'GET') {
+        cover_card_edit($app, (int) $m[1]);
+    }
+}
+
+if (preg_match('#^/cards/(\d+)/status$#', $path, $m) === 1 && $method === 'POST') {
+    require APP_ROOT . '/src/handlers/cards.php';
+    cover_card_status($app, (int) $m[1]);
+}
+
+if ($path === '/api/cards.csv' && $method === 'GET') {
+    require APP_ROOT . '/src/handlers/cards.php';
+    cover_cards_csv($app);
 }
 
 if ($path === '/log' && $method === 'GET') {

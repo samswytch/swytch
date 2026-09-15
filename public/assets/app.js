@@ -650,5 +650,21 @@
     });
   }
 
-  showContextPicker();
+  /*
+   * A card screen links here with the brand already chosen, so she is not asked
+   * a question she has just answered by opening the card.
+   */
+  function contextFromUrl() {
+    var match = /[?&]context=([^&]+)/.exec(window.location.search);
+    if (!match) return null;
+    var key = decodeURIComponent(match[1]);
+    for (var i = 0; i < CONTEXTS.length; i++) {
+      if (CONTEXTS[i].key === key) return CONTEXTS[i];
+    }
+    return null;
+  }
+
+  var preselected = contextFromUrl();
+  if (preselected) startNewQuestion(preselected);
+  else showContextPicker();
 })();

@@ -11,7 +11,10 @@
  */
 ?>
 <main class="main main-wide">
-  <h1 class="page-title">Log</h1>
+  <div class="page-head">
+    <h1 class="page-title">Log</h1>
+    <a class="button" href="/api/log.csv" download>Export the log</a>
+  </div>
   <p class="lede">
     Every logged decision, parked item, question for Kev and end-of-day note, oldest first.
     Nothing here can be edited or removed. This is what Sam reads when he is back on

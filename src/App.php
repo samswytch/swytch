@@ -43,6 +43,11 @@ final class App
         return new LogBook($this->db());
     }
 
+    public function cards(): Cards
+    {
+        return new Cards($this->db());
+    }
+
     public function usage(): Usage
     {
         return new Usage($this->db(), $this->config);
