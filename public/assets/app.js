@@ -392,7 +392,7 @@
     var outcome = el('div', 'outcome');
     outcome.appendChild(el('p', 'outcome-label', reply.outcomeLabel));
     if (reply.logError) outcome.appendChild(el('p', 'outcome-warning', reply.logError));
-    if (reply.logId) outcome.appendChild(buildNoteForm(reply.logId, reply.noteKind));
+    if (reply.logId) outcome.appendChild(buildNoteForm(reply));
     section.appendChild(outcome);
 
     ui.transcript.appendChild(section);
@@ -403,19 +403,19 @@
    * server wrote it the moment the assistant classified the reply — so this
    * fills in the one field that is hers, once. It cannot be edited afterwards.
    */
-  function buildNoteForm(logId, kind) {
+  function buildNoteForm(reply) {
+    var logId = reply.logId;
     var form = el('div', 'note-form');
 
-    var label = el('label', 'note-label',
-      kind === 'decision' ? 'What you decided. Optional.' : 'Your note on this. Optional.');
+    // The wording differs by kind and comes from the server, so there is one
+    // place that decides what each kind of entry calls her own words.
+    var label = el('label', 'note-label', reply.noteLabel);
     label.htmlFor = 'note-' + logId;
 
     var textarea = el('textarea');
     textarea.id = 'note-' + logId;
     textarea.rows = 2;
-    textarea.placeholder = kind === 'decision'
-      ? 'Ran it with the second headline.'
-      : 'Drafted it; holding until the 26th.';
+    textarea.placeholder = reply.notePlaceholder;
 
     var row = el('div', 'composer-row');
     var button = el('button', 'button', 'Add to log');
@@ -445,7 +445,7 @@
         return response.json().catch(function () { return null; }).then(function (payload) {
           if (!response.ok) throw new Error((payload && payload.error) || 'That could not be saved. Try again.');
           var saved = el('p', 'note-saved');
-          saved.appendChild(el('span', 'meta', (kind === 'decision' ? 'What you decided' : 'Your note') + ': '));
+          saved.appendChild(el('span', 'meta', reply.noteHeading + ': '));
           saved.appendChild(document.createTextNode(note));
           form.parentNode.replaceChild(saved, form);
         });

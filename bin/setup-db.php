@@ -26,11 +26,14 @@ try {
 
 try {
     $db = new Db($config->databasePath());
-    $db->applySchema(APP_ROOT . '/db/schema.sql');
+
+    foreach (Migrate::run($db, APP_ROOT . '/db/schema.sql') as $note) {
+        echo 'Migrated: ' . $note . "\n";
+    }
 
     $tables = $db->all(
         "SELECT name FROM sqlite_master WHERE type = 'table'
-         AND name IN ('log_entries', 'assistant_usage', 'login_attempts') ORDER BY name"
+         AND name IN ('log_entries', 'cards', 'assistant_usage', 'login_attempts') ORDER BY name"
     );
     $mode = $db->one('PRAGMA journal_mode');
 

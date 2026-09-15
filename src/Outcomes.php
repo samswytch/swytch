@@ -50,7 +50,16 @@ final class Outcomes
         return ['text' => rtrim($text), 'outcome' => $outcome];
     }
 
-    /** Which outcomes produce a log entry, and of which kind (BRIEF.md §9). */
+    /**
+     * Which outcomes produce a log entry, and of which kind (BRIEF.md §9).
+     *
+     * `ask_kev` is logged too. §9 as drafted lists three kinds, but something
+     * routed to Kev is exactly the sort of thing Sam wants to find on his
+     * return — it is a decision that was taken while he was away, by someone
+     * else, and the log is the only place it would otherwise be recorded.
+     * Tier 1 "go ahead" stays unlogged; the envelope is explicit that a log of
+     * every post is noise and will not get read.
+     */
     public static function logKind(string $outcome): ?string
     {
         if ($outcome === self::GO_AHEAD_LOGGED) {
@@ -58,6 +67,9 @@ final class Outcomes
         }
         if ($outcome === self::PARK) {
             return 'parked';
+        }
+        if ($outcome === self::ASK_KEV) {
+            return 'ask_kev';
         }
 
         return null;

@@ -86,6 +86,13 @@ function cover_assistant(App $app): void
         }
     }
 
+    $noteLabels = [
+        'decision' => ['What you decided. Optional.', 'Ran it with the second headline.'],
+        'parked' => ['Your note on this. Optional.', 'Drafted it; holding until the 26th.'],
+        'ask_kev' => ['What Kev said, once you have asked him. Optional.', 'Kev said quote £340, lead time two weeks.'],
+    ];
+    $noteKind = $kind ?? 'decision';
+
     App::json([
         'text' => $text,
         'html' => Markdown::toHtml($text),
@@ -93,6 +100,9 @@ function cover_assistant(App $app): void
         'outcomeLabel' => Outcomes::label($outcome),
         'logId' => $logId,
         'logError' => $logError,
-        'noteKind' => $outcome === Outcomes::PARK ? 'parked' : 'decision',
+        'noteKind' => $noteKind,
+        'noteLabel' => $noteLabels[$noteKind][0] ?? $noteLabels['decision'][0],
+        'notePlaceholder' => $noteLabels[$noteKind][1] ?? $noteLabels['decision'][1],
+        'noteHeading' => LogBook::noteLabel($noteKind),
     ]);
 }

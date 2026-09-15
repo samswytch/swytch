@@ -16,6 +16,7 @@ require_once __DIR__ . '/Clock.php';
 require_once __DIR__ . '/Config.php';
 require_once __DIR__ . '/Errors.php';
 require_once __DIR__ . '/Db.php';
+require_once __DIR__ . '/Migrate.php';
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/Contexts.php';
 require_once __DIR__ . '/Content.php';
