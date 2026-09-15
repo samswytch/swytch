@@ -1,11 +1,11 @@
-node_modules/
-.next/
-out/
-build/
-.env
-.env.local
-.env*.local
-*.tsbuildinfo
-next-env.d.ts
+# The real configuration lives outside the web root on the server and is never
+# committed — it holds the API key and the password hash.
+config.php
+
+# Local testing only.
+.local/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.log
 .DS_Store
-.vercel

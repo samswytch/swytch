@@ -1,0 +1,37 @@
+# Everything that is not a real file goes to the front controller.
+#
+# The application code, the brand packs, the database and the API key all live
+# above this directory and are not servable at all — this only routes what is
+# inside the web root.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Belt and braces: nothing here should ever serve a dotfile or a PHP file other
+# than the front controller.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|log|md)$">
+    Require all denied
+</FilesMatch>
+
+# The assistant holds a shared password and answers in a person's own words.
+# None of it should be framed, sniffed, or sent to another site as a referrer.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "same-origin"
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 hour"
+    ExpiresByType application/javascript "access plus 1 hour"
+    ExpiresByType image/svg+xml "access plus 1 day"
+</IfModule>
