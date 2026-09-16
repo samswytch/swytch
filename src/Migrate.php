@@ -16,6 +16,37 @@ declare(strict_types=1);
  */
 final class Migrate
 {
+    /**
+     * Bumped whenever db/schema.sql changes in a way an existing database has
+     * to be brought up to. Stored in SQLite's own `user_version`, which costs
+     * one pragma to read and needs no table of its own.
+     */
+    public const SCHEMA_VERSION = 2;
+
+    /**
+     * Called on the first database use of a request.
+     *
+     * There is no shell on the target host, so the schema cannot be assumed to
+     * have been applied by hand: the app brings its own database up to date and
+     * says so loudly if it cannot. When the version already matches — which is
+     * every request after the first — this is a single pragma and returns.
+     *
+     * @return array<int,string> what was done, empty when there was nothing to do
+     */
+    public static function ensure(Db $db, string $schemaPath): array
+    {
+        $current = (int) ($db->one('PRAGMA user_version')['user_version'] ?? 0);
+        if ($current === self::SCHEMA_VERSION) {
+            return [];
+        }
+
+        $notes = self::run($db, $schemaPath);
+        // Not a prepared statement: SQLite does not accept a parameter here.
+        $db->pdo()->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION);
+
+        return $notes === [] ? ['Applied the schema at version ' . self::SCHEMA_VERSION . '.'] : $notes;
+    }
+
     /** @return array<int,string> what was done, for the operator to read */
     public static function run(Db $db, string $schemaPath): array
     {

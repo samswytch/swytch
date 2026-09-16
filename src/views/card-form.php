@@ -150,7 +150,7 @@ $problem = static function (string $name) use ($errors): string {
         if ($card['completed_at'] !== null): ?> · done <?= htmlspecialchars(Clock::forHumans((string) $card['completed_at']), ENT_QUOTES, 'UTF-8') ?><?php endif; ?>
       </p>
       <p class="meta">
-        <a href="/assistant?context=<?= htmlspecialchars((string) $card['context_key'], ENT_QUOTES, 'UTF-8') ?>">Ask the assistant about <?= htmlspecialchars(Contexts::name((string) $card['context_key']), ENT_QUOTES, 'UTF-8') ?></a>
+        <a href="/assistant?card=<?= (int) $card['id'] ?>">Ask the assistant about this card</a>
       </p>
     </div>
   <?php endif; ?>

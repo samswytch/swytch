@@ -8,7 +8,23 @@
  * conversation is open and are gone when she starts a new question.
  */
 ?>
+<?php
+/**
+ * @var array<string,mixed>|null $card   the card she opened this from, if any
+ * @var bool $cardMissing                a ?card= that names nothing
+ */
+?>
+<?php if ($cardMissing): ?>
+  <main class="main">
+    <p class="notice">That card is no longer there. Pick a brand below instead.</p>
+  </main>
+<?php endif; ?>
 <main class="main" id="assistant"
+      <?php if ($card !== null): ?>
+      data-card-id="<?= (int) $card['id'] ?>"
+      data-card-title="<?= htmlspecialchars((string) $card['title'], ENT_QUOTES, 'UTF-8') ?>"
+      data-card-context="<?= htmlspecialchars((string) $card['context_key'], ENT_QUOTES, 'UTF-8') ?>"
+      <?php endif; ?>
       data-contexts='<?= htmlspecialchars(json_encode(array_map(
           static fn(array $c): array => [
               'key' => $c['key'],

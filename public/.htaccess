@@ -27,6 +27,10 @@
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
     Header always set Referrer-Policy "same-origin"
+    # One person's working plan behind a shared password. Nothing here should
+    # ever appear in a search result. PHP sends this too, so it holds even if
+    # mod_headers is not loaded.
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
 </IfModule>
 
 <IfModule mod_expires.c>

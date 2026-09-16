@@ -27,8 +27,12 @@ try {
 try {
     $db = new Db($config->databasePath());
 
-    foreach (Migrate::run($db, APP_ROOT . '/db/schema.sql') as $note) {
+    $notes = Migrate::ensure($db, APP_ROOT . '/db/schema.sql');
+    foreach ($notes as $note) {
         echo 'Migrated: ' . $note . "\n";
+    }
+    if ($notes === []) {
+        echo "Already at schema version " . Migrate::SCHEMA_VERSION . "; nothing to do.\n";
     }
 
     $tables = $db->all(

@@ -52,24 +52,74 @@ TEXT;
     }
 
     /**
+     * §6: the system prompt is assembled from the brand pack for that context,
+     * the authority envelope, and the card if there is one.
+     *
+     * The card sits after the cache breakpoint with the date. It changes from
+     * one conversation to the next, so caching it would mean a fresh prefix for
+     * every card rather than one shared across them all.
+     *
      * @param array{key:string,name:string,colour:string,pack:string,internal:bool} $context
+     * @param array<string,mixed>|null $card
      * @return array<int,array<string,mixed>>
      */
-    public function systemBlocks(array $context): array
+    public function systemBlocks(array $context, ?array $card = null): array
     {
-        return [
+        $blocks = [
             ['type' => 'text', 'text' => self::OPERATING_INSTRUCTION],
             ['type' => 'text', 'text' => "--- Authority envelope ---\n\n" . $this->content->envelope()],
             [
                 'type' => 'text',
                 'text' => "--- Brand pack: {$context['name']} ---\n\n" . $this->content->brandPack($context),
                 // Everything above this point is identical for every turn of a
-                // conversation, so it is worth caching. The date below changes
-                // daily and sits after the breakpoint so it never invalidates
-                // the rest.
+                // conversation, so it is worth caching. What follows changes and
+                // sits after the breakpoint so it never invalidates the rest.
                 'cache_control' => ['type' => 'ephemeral'],
             ],
-            ['type' => 'text', 'text' => 'Today is ' . Clock::todayForPrompt() . '.'],
         ];
+
+        if ($card !== null) {
+            $blocks[] = ['type' => 'text', 'text' => self::describeCard($card)];
+        }
+
+        $blocks[] = ['type' => 'text', 'text' => 'Today is ' . Clock::todayForPrompt() . '.'];
+
+        return $blocks;
+    }
+
+    /**
+     * The card she has open, in the shape §3 defines it. The Asana link is left
+     * out: it is a URL the model cannot follow and would only invite it to
+     * pretend it had.
+     *
+     * @param array<string,mixed> $card
+     */
+    private static function describeCard(array $card): string
+    {
+        $lines = [
+            'Title: ' . (string) $card['title'],
+            'Context: ' . Contexts::name((string) $card['context_key']),
+            'Stream: ' . (Cards::STREAM_LABELS[(string) $card['stream']] ?? (string) $card['stream']),
+            'Due: ' . Cards::readableDate((string) $card['due_date']),
+        ];
+
+        if ($card['publish_time'] !== null && $card['publish_time'] !== '') {
+            $lines[] = 'Publishes at: ' . (string) $card['publish_time'];
+        }
+        if ($card['channel'] !== null && $card['channel'] !== '') {
+            $lines[] = 'Channel: ' . (string) $card['channel'];
+        }
+        $lines[] = 'Status: ' . (Cards::STATUS_LABELS[(string) $card['status']] ?? (string) $card['status']);
+        $lines[] = 'Priority: ' . (Cards::PRIORITY_LABELS[(string) $card['priority']] ?? (string) $card['priority']);
+
+        if ($card['notes'] !== null && trim((string) $card['notes']) !== '') {
+            $lines[] = '';
+            $lines[] = 'Her notes on it:';
+            $lines[] = (string) $card['notes'];
+        }
+
+        return "--- The card she has open ---\n\n" . implode("\n", $lines) .
+            "\n\nShe opened the assistant from this card, so assume the question is about it " .
+            "unless she says otherwise.";
     }
 }

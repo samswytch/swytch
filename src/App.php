@@ -27,7 +27,12 @@ final class App
     public function db(): Db
     {
         if ($this->db === null) {
-            $this->db = new Db($this->config->databasePath());
+            $db = new Db($this->config->databasePath());
+            // The host has no shell, so nobody can run a setup script by hand.
+            // The app brings its own schema up to date on the first request and
+            // fails legibly if it cannot, rather than serving a broken page.
+            Migrate::ensure($db, APP_ROOT . '/db/schema.sql');
+            $this->db = $db;
         }
 
         return $this->db;
@@ -113,6 +118,26 @@ final class App
     public static function jsonError(string $message, int $status): void
     {
         self::json(['error' => $message], $status);
+    }
+
+    /**
+     * Keep the whole app out of search results and out of caches.
+     *
+     * Nothing here should ever be indexed: it is one person's working plan
+     * behind a shared password, and the login page itself is the only thing a
+     * crawler could reach. Sent from PHP rather than only from .htaccess so it
+     * survives a web server that ignores the file.
+     */
+    public static function sendPrivacyHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+        header('X-Robots-Tag: noindex, nofollow, noarchive, noimageindex');
+        header('Referrer-Policy: same-origin');
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: DENY');
+        header('Cache-Control: no-store, private');
     }
 
     /** Redirect to HTTPS, once the certificate exists and the flag is turned on. */

@@ -17,6 +17,19 @@
 
   var CONTEXTS = JSON.parse(root.getAttribute('data-contexts') || '[]');
 
+  /*
+   * §6: the assistant can be opened in the context of a specific card. The
+   * server has already resolved it — an id naming nothing never reaches here —
+   * so this is only the id to send back and the title to show her.
+   */
+  var CARD = root.getAttribute('data-card-id')
+    ? {
+        id: parseInt(root.getAttribute('data-card-id'), 10),
+        title: root.getAttribute('data-card-title') || '',
+        context: root.getAttribute('data-card-context') || ''
+      }
+    : null;
+
   /* Must match src/Conversation.php. */
   var MAX_ATTACHMENT_BASE64 = 11000000;
   var MAX_CONVERSATION_BASE64 = 18000000;
@@ -38,6 +51,7 @@
 
   var state = {
     context: null,
+    cardId: null,
     conversationId: uuid(),
     turns: [],
     attachments: [],
@@ -498,9 +512,10 @@
     });
   }
 
-  function startNewQuestion(context) {
+  function startNewQuestion(context, card) {
     if (state.controller) state.controller.abort();
     state.context = context || null;
+    state.cardId = card ? card.id : null;
     state.conversationId = uuid();
     state.turns = [];
     state.attachments = [];
@@ -516,6 +531,20 @@
     ui.contextBar.style.setProperty('--context-colour', state.context.colour);
     ui.contextName.textContent = state.context.name;
     ui.textarea.placeholder = 'Ask about ' + state.context.name + ', or paste the draft.';
+
+    if (card) {
+      // Say which card, so it is obvious the answer is about that one and not
+      // the brand in general.
+      var about = el('p', 'instruction');
+      about.appendChild(document.createTextNode('About '));
+      var link = el('a', null, card.title);
+      link.href = '/cards/' + card.id;
+      about.appendChild(link);
+      about.appendChild(document.createTextNode('. Ask whether it reads right, or paste the draft.'));
+      ui.empty.parentNode.replaceChild(about, ui.empty);
+      ui.empty = about;
+      ui.textarea.placeholder = 'Ask about this card, or paste the draft.';
+    }
     renderAttachments();
     refreshSendState();
   }
@@ -621,6 +650,7 @@
       body: JSON.stringify({
         conversationId: state.conversationId,
         contextKey: state.context.key,
+        cardId: state.cardId,
         messages: toApiMessages()
       })
     }).then(function (response) {
@@ -664,7 +694,16 @@
     return null;
   }
 
-  var preselected = contextFromUrl();
-  if (preselected) startNewQuestion(preselected);
-  else showContextPicker();
+  if (CARD) {
+    var cardContext = null;
+    for (var c = 0; c < CONTEXTS.length; c++) {
+      if (CONTEXTS[c].key === CARD.context) cardContext = CONTEXTS[c];
+    }
+    if (cardContext) startNewQuestion(cardContext, CARD);
+    else showContextPicker();
+  } else {
+    var preselected = contextFromUrl();
+    if (preselected) startNewQuestion(preselected);
+    else showContextPicker();
+  }
 })();

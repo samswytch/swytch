@@ -30,7 +30,23 @@ function cover_assistant(App $app): void
         App::jsonError('That request could not be read. Reload the page and try again.', 400);
     }
 
-    $context = Contexts::find(is_string($payload['contextKey'] ?? null) ? $payload['contextKey'] : null);
+    // §6: "She picks a context, or it is inherited from the card." When a card
+    // is named, the card decides — the browser's own contextKey is not trusted
+    // to agree with it.
+    $card = null;
+    if (isset($payload['cardId']) && $payload['cardId'] !== null && $payload['cardId'] !== '') {
+        $cardId = is_int($payload['cardId']) ? $payload['cardId'] : (int) $payload['cardId'];
+        $card = $cardId > 0 ? $app->cards()->find($cardId) : null;
+        if ($card === null) {
+            App::jsonError('That card is no longer there. Start a new question.', 400);
+        }
+    }
+
+    $contextKey = $card !== null
+        ? (string) $card['context_key']
+        : (is_string($payload['contextKey'] ?? null) ? $payload['contextKey'] : null);
+
+    $context = Contexts::find($contextKey);
     if ($context === null) {
         App::jsonError('Pick which brand this is about before sending.', 400);
     }
@@ -47,7 +63,7 @@ function cover_assistant(App $app): void
         if (!$capped['ok']) {
             App::jsonError($capped['message'], 429);
         }
-        $systemBlocks = $app->prompt()->systemBlocks($context);
+        $systemBlocks = $app->prompt()->systemBlocks($context, $card);
     } catch (DatabaseError | ContentError $e) {
         App::jsonError($e->getMessage(), 503);
     }

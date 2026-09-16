@@ -1,0 +1,4 @@
+# Nothing here is public. The app is one person's working plan behind a shared
+# password; the login screen is the only thing a crawler could ever reach.
+User-agent: *
+Disallow: /

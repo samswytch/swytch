@@ -138,15 +138,24 @@ final class Config
 
     public function dataDir(): string
     {
-        $dir = $this->requireString('data_dir');
+        $dir = rtrim($this->requireString('data_dir'), '/');
+
+        // Created rather than demanded: the deploy is done through a web file
+        // manager, and one missing directory should not be the thing that stops
+        // the app running.
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0750, true);
+        }
+
         if (!is_dir($dir)) {
             throw new ConfigError(
-                "The data directory {$dir} does not exist. Create it, and make sure the directory " .
-                "itself is writable — SQLite needs to create -wal and -shm files alongside the database."
+                "The data directory {$dir} does not exist and could not be created. Make it by hand " .
+                "in the file manager, and make sure the directory itself is writable — SQLite needs to " .
+                "create -wal and -shm files alongside the database."
             );
         }
 
-        return rtrim($dir, '/');
+        return $dir;
     }
 
     public function databasePath(): string
@@ -164,14 +173,21 @@ final class Config
         return $this->dataDir() . '/backups';
     }
 
+    /**
+     * Both default to off when the key is absent. A hand-edited config on a host
+     * with no shell will sometimes be missing a line, and the cost of guessing
+     * wrong is asymmetric: defaulting to off leaves the app reachable over plain
+     * HTTP, while a missing key that threw would take the whole app down with a
+     * message about an array index.
+     */
     public function cookieSecure(): bool
     {
-        return $this->values['cookie_secure'] === true;
+        return ($this->values['cookie_secure'] ?? false) === true;
     }
 
     public function forceHttps(): bool
     {
-        return $this->values['force_https'] === true;
+        return ($this->values['force_https'] ?? false) === true;
     }
 }
 

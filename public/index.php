@@ -12,6 +12,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 $app = cover_boot();
+App::sendPrivacyHeaders();
 $app->enforceHttps();
 
 $auth = $app->auth();
@@ -64,7 +65,19 @@ if ($path === '/closeout' && $method === 'POST') {
 }
 
 if ($path === '/assistant' && $method === 'GET') {
-    $app->render('assistant', ['title' => 'Assistant — Marketing cover']);
+    $card = null;
+    $cardMissing = false;
+    $requested = $_GET['card'] ?? null;
+    if (is_string($requested) && $requested !== '') {
+        $card = ctype_digit($requested) ? $app->cards()->find((int) $requested) : null;
+        $cardMissing = $card === null;
+    }
+
+    $app->render('assistant', [
+        'title' => 'Assistant — Marketing cover',
+        'card' => $card,
+        'cardMissing' => $cardMissing,
+    ]);
 }
 
 // ---- Cards (BRIEF.md §3 and §8) -------------------------------------------

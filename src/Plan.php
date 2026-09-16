@@ -12,7 +12,7 @@ declare(strict_types=1);
  *
  * The rules, in order:
  *   1. Anything with a publish_time today, in time order.
- *   2. Anything overdue, or due within two days and not started.
+ *   2. Anything overdue, or due within two days, that is not done.
  *   3. The next open item on project work (physical materials, premises).
  *   4. Stop. Cap at six items.
  *
@@ -82,20 +82,26 @@ final class Plan
             static fn(array $c): string => 'publishes at ' . $c['publish_time']
         );
 
-        // 2. Anything overdue, or due within two days and not started.
+        // 2. Anything overdue, or due within two days, that is not done.
+        //
+        //    §5 reads "anything overdue, or due within two days and not
+        //    started". Requiring not_started on the second half hid a card she
+        //    had picked up yesterday and was due today — it would reappear only
+        //    once it was late, which is exactly the wrong moment. Status other
+        //    than done is not a reason to leave something off the day's plan;
+        //    the reason line says which it is.
+        //
+        //    "due_date <= $soon" covers both halves: overdue is any date before
+        //    today, and today is never after $soon.
         $take(
             $this->db->all(
                 "SELECT * FROM cards
-                 WHERE status != 'done'
-                   AND (
-                     due_date < ?
-                     OR (due_date <= ? AND status = 'not_started')
-                   )
+                 WHERE status != 'done' AND due_date <= ?
                  ORDER BY due_date ASC, COALESCE(publish_time, '99:99') ASC, id ASC",
-                [$isoDate, $soon]
+                [$soon]
             ),
             2,
-            fn(array $c): string => self::dueReason((string) $c['due_date'], $isoDate)
+            fn(array $c): string => self::dueReason((string) $c['due_date'], $isoDate, (string) $c['status'])
         );
 
         // 3. The next open item on project work — one item, the oldest that is
@@ -119,8 +125,11 @@ final class Plan
      * "due Thursday, not started" — §5's own example. A weekday name is enough
      * inside a working week and ambiguous outside one, so anything more than
      * six days away from today is named by its date instead.
+     *
+     * The status is named because rule 2 now admits work already in progress,
+     * and "due Friday" alone would not tell her whether she had started it.
      */
-    private static function dueReason(string $dueIso, string $todayIso): string
+    private static function dueReason(string $dueIso, string $todayIso, string $status): string
     {
         $due = Cards::parseDate($dueIso);
         $today = Cards::parseDate($todayIso);
@@ -128,19 +137,23 @@ final class Plan
             return 'due ' . $dueIso;
         }
 
+        $started = $status === 'in_progress' ? ', in progress' : ', not started';
         $days = (int) $today->diff($due)->format('%r%a');
 
         if ($days < 0) {
-            return 'overdue, was due ' . self::when($due, abs($days));
+            // Overdue already says it has not been finished, so the only status
+            // worth adding is that it is under way.
+            return 'overdue, was due ' . self::when($due, abs($days))
+                . ($status === 'in_progress' ? ', in progress' : '');
         }
         if ($days === 0) {
-            return 'due today, not started';
+            return 'due today' . $started;
         }
         if ($days === 1) {
-            return 'due tomorrow, not started';
+            return 'due tomorrow' . $started;
         }
 
-        return 'due ' . self::when($due, $days) . ', not started';
+        return 'due ' . self::when($due, $days) . $started;
     }
 
     private static function when(DateTimeImmutable $date, int $distanceInDays): string
