@@ -26,6 +26,7 @@ require_once __DIR__ . '/Markdown.php';
 require_once __DIR__ . '/Csv.php';
 require_once __DIR__ . '/LogBook.php';
 require_once __DIR__ . '/Cards.php';
+require_once __DIR__ . '/Plan.php';
 require_once __DIR__ . '/Usage.php';
 require_once __DIR__ . '/Conversation.php';
 require_once __DIR__ . '/Anthropic.php';

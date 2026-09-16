@@ -20,8 +20,9 @@ $showHeader = $view !== 'login';
 <header class="header">
   <span class="header-name">Marketing cover</span>
   <nav class="header-nav">
-    <a href="/assistant"<?= $path === '/assistant' || $path === '/' ? ' aria-current="page"' : '' ?>>Assistant</a>
+    <a href="/"<?= $path === '/' ? ' aria-current="page"' : '' ?>>Today</a>
     <a href="/cards"<?= str_starts_with($path, '/cards') ? ' aria-current="page"' : '' ?>>All work</a>
+    <a href="/assistant"<?= $path === '/assistant' ? ' aria-current="page"' : '' ?>>Assistant</a>
     <a href="/log"<?= $path === '/log' ? ' aria-current="page"' : '' ?>>Log</a>
     <a href="/api/cards.csv" download>Export</a>
     <form action="/logout" method="post"><button type="submit" class="linkbutton">Sign out</button></form>

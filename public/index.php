@@ -52,10 +52,18 @@ if ($path === '/logout' && $method === 'POST') {
     App::redirect('/login');
 }
 
-// `/` becomes the day view in phase 3 (§5, "the screen the app opens on").
-// Until then both paths are the assistant, and /assistant is the one the
-// navigation points at so the link does not move when the day view lands.
-if (($path === '/' || $path === '/assistant') && $method === 'GET') {
+// §5: the day view is "the screen the app opens on".
+if ($path === '/' && $method === 'GET') {
+    require APP_ROOT . '/src/handlers/day.php';
+    cover_day($app);
+}
+
+if ($path === '/closeout' && $method === 'POST') {
+    require APP_ROOT . '/src/handlers/day.php';
+    cover_closeout($app);
+}
+
+if ($path === '/assistant' && $method === 'GET') {
     $app->render('assistant', ['title' => 'Assistant — Marketing cover']);
 }
 
