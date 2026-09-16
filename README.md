@@ -11,9 +11,10 @@ Deployed at **https://plan.swytch.graphics**.
 
 ## What is built
 
-**Phase 1 of `BRIEF.md` §13** — the assistant, the envelope, brand pack loading and the
-log. It deploys on its own and is the part with no substitute: Sadie has no Claude login
-of her own, so this app is her only route to it.
+**Phases 1 to 3 of `BRIEF.md` §13.** Phase 4, the Tuesday week view, is genuinely
+optional and is not built — without it Tuesday is a day that shows more items.
+
+Four screens: **Today**, **All work**, **Assistant**, **Log**.
 
 - **The assistant** (`§6`). Pick a context, ask, or paste a draft, or drop a proof. The
   system prompt is assembled at request time from the authority envelope plus that
@@ -39,12 +40,16 @@ BRIEF.md                 the specification
 CLAUDE.md                instructions for Claude Code
 content/                 the envelope and six brand packs — data, not code
 config.example.php       copy to appdata/config.php on the server and fill in
-db/schema.sql            three tables
+db/schema.sql            four tables
 src/                     the application; no autoloader, no Composer, no framework
-  handlers/              the three endpoints that do real work
-  views/                 the four screens
+  Plan.php               the day view's ordering rules (§5)
+  Cards.php              the card model and its validation (§3)
+  Migrate.php            schema upgrades that keep the log intact
+  handlers/              the endpoints that do real work
+  views/                 the screens
 public/                  the only web-servable directory
-bin/setup-db.php         applies the schema
+bin/setup-db.php         applies the schema, and migrates an older database
+bin/seed.php             three weeks of example cards, for checking the ordering
 bin/backup.php           nightly SQLite snapshot, 14-day retention
 deploy.sh                rsync over SSH
 dev-router.php           local only; the built-in server has no .htaccess
@@ -72,8 +77,14 @@ every request and never parsed, cached or copied into the database.
 ```bash
 cp config.example.php /tmp/cover-config.php     # then fill it in
 COVER_CONFIG=/tmp/cover-config.php php bin/setup-db.php
+COVER_CONFIG=/tmp/cover-config.php php bin/seed.php --today   # optional example cards
 COVER_CONFIG=/tmp/cover-config.php php -S 127.0.0.1:8080 -t public dev-router.php
 ```
+
+`bin/seed.php --cover` loads examples across the real cover period instead, and
+`--wipe` clears the cards first. Everything it creates goes through the same validation
+as the form, so it cannot produce a card the form would reject. It is example content in
+the right shape, not Sam's plan — replace it before the trial week.
 
 Generate the password hash with:
 
@@ -100,6 +111,9 @@ mkdir -p /home/om44wfu4/appdata/backups
 # put config.php in /home/om44wfu4/appdata/ and fill it in
 php /home/om44wfu4/coverapp/bin/setup-db.php
 ```
+
+`setup-db.php` is safe to re-run, and upgrades a database made by an earlier version —
+it reports what it migrated.
 
 Then open **`/health`** and check every row reads ok. It reports on the configuration,
 the data directory, the database and its journal mode, the envelope, all six packs, the

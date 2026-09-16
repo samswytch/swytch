@@ -41,20 +41,36 @@ function cover_health(App $app): void
     });
 
     $checks[] = cover_health_check('Database', static function () use ($app): string {
+        $expected = ['assistant_usage', 'cards', 'log_entries', 'login_attempts'];
         $rows = $app->db()->all(
             "SELECT name FROM sqlite_master WHERE type = 'table'
-             AND name IN ('log_entries', 'assistant_usage', 'login_attempts') ORDER BY name"
+             AND name IN ('log_entries', 'cards', 'assistant_usage', 'login_attempts') ORDER BY name"
         );
         $found = array_column($rows, 'name');
-        if (count($found) < 3) {
+        $missing = array_diff($expected, $found);
+        if ($missing !== []) {
             throw new RuntimeException(
-                'Only found ' . (implode(', ', $found) ?: 'no tables') . '. Run bin/setup-db.php over SSH.'
+                'Missing table(s): ' . implode(', ', $missing) . '. Run bin/setup-db.php over SSH.'
             );
         }
+
+        // The log gained two kinds when the day view arrived. An old database
+        // that has not been migrated would reject every close-out at write time.
+        $definition = $app->db()->one(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'log_entries'"
+        );
+        if (!is_string($definition['sql'] ?? null) || !str_contains($definition['sql'], 'closeout')) {
+            throw new RuntimeException(
+                'log_entries predates the four entry kinds. Run bin/setup-db.php, which migrates it.'
+            );
+        }
+
         $mode = $app->db()->one('PRAGMA journal_mode');
+        $cards = $app->db()->one('SELECT COUNT(*) AS n FROM cards');
 
         return 'Reachable. Tables: ' . implode(', ', $found) .
-            '. Journal mode: ' . ($mode['journal_mode'] ?? 'unknown') . '.';
+            '. Journal mode: ' . ($mode['journal_mode'] ?? 'unknown') .
+            '. Cards loaded: ' . ($cards['n'] ?? 0) . '.';
     });
 
     $checks[] = cover_health_check('Authority envelope', static function () use ($app): string {

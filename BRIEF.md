@@ -356,32 +356,68 @@ anything commercial or urgent, and carry on. Do not spend the day trying to fix 
 
 ## 11. Technical
 
-**Stack:** Next.js (App Router) on Vercel. Server-side API routes are required — the
-Anthropic API key must never reach the browser. Postgres (Vercel Postgres or Neon).
+**Stack:** plain PHP 8.1 on LiteSpeed, SQLite through PDO, no framework, no Composer,
+no build step. This is what the hosting is: names.co.uk shared hosting, account-wide
+PHP version, no Node and no PostgreSQL. Laravel and Symfony both need `mbstring` and
+`fileinfo` and neither is guaranteed here, so the app is a small front controller and a
+dozen `require`s — which is also the right shape for something nobody can update for
+three weeks.
 
-**Auth:** single shared password via middleware, stored as an env var. Two users,
-three weeks. Do not build accounts.
+Server-side execution is required regardless: the Anthropic API key must never reach
+the browser.
 
-**Anthropic API:** called only from a server route that proxies the request and
-injects the key. Send full conversation history each turn; the API is stateless.
-Confirm the current model identifier against https://docs.claude.com/en/api/overview
-rather than hardcoding one from memory.
+**Layout.** Three directories, only one of them web-servable:
 
-**Rate limit the assistant route.** A shared password sitting in front of an API key
-deserves a per-session cap and a daily cap, with a clear message when hit rather
+- `appdata/` — `config.php`, the SQLite database, nightly backups, the log file.
+  Outside the web root.
+- `coverapp/` — the application, the brand packs, the CLI scripts. Readable by PHP,
+  not servable.
+- the docroot — the front controller, `.htaccess`, the assets.
+
+**Auth:** single shared password, checked in PHP, held in a session. Two users, three
+weeks. Do not build accounts. Directory Privacy is not used — HTTP Basic has no way to
+sign out and this is a shared machine. A sign-in throttle exists because a single
+shared password sits on the open internet for three weeks.
+
+**Anthropic API:** called from PHP with curl, which injects the key. Send full
+conversation history each turn; the API is stateless. Confirm the current model
+identifier against https://docs.claude.com/en/api/overview rather than hardcoding one
+from memory.
+
+**Blocking, not streamed.** LiteSpeed buffers output, so a stream would be a thing to
+debug from abroad with nobody on call. A reply takes twenty to forty seconds and the
+screen says so while it waits. curl gives up at 90 seconds, against a 300-second
+`max_execution_time` and a measured 115-second request that returned intact. One retry
+with backoff on 429 and 5xx, then a clear failure that names Asana as the fallback.
+
+**Rate limit the assistant.** A shared password sitting in front of an API key
+deserves a per-conversation cap and a daily cap, with a clear message when hit rather
 than a silent failure. State the caps in the README so Sam can raise them.
+
+**Time.** The server runs UTC and the working day is London. The clocks change on
+25 October, inside the cover period. Store timestamps in UTC, store working-day dates
+as plain dates, and convert in one place.
 
 **Deploy once.** No changes during the period, no hotfixes, nobody on call. Whatever
 is live on 6 October is what runs until 26 October. This is the reason the scope in
 §1 is as small as it is — build only what will still be working, untouched, in three
-weeks.
+weeks. Deployment is rsync over SSH; there is nothing to build.
 
-**Errors are legible.** Every failure mode gets a plain-English message telling her
-what to do — not a stack trace, not a spinner that never resolves. If the Anthropic
-call fails, say so and tell her to try again or fall back to §10.
+**Errors are legible.** `display_errors` is off and `log_errors` is on, to a file in
+`appdata/`. Every failure mode gets a plain-English message telling her what to do —
+not a stack trace, not a spinner that never resolves. If the Anthropic call fails, say
+so and tell her to try again or fall back to §10.
 
-**Seed data.** Ship a seed script so Sam can load the three weeks quickly, and so
-the ordering logic can be tested against real dates before departure.
+**Health check.** One screen that reports on the configuration, the database and its
+tables, the envelope, all six brand packs, the PHP extensions and the timezone. Deploy
+once means one chance to notice something is not wired up.
+
+**Backups.** A nightly SQLite snapshot on cron, keeping fourteen days, taken with
+`VACUUM INTO` rather than a file copy — a copy taken mid-write can capture the database
+without its `-wal` companion and produce a backup that will not open.
+
+**Seed data.** Ship a seed script so Sam can load the three weeks quickly, and so the
+ordering logic can be tested against real dates before departure.
 
 ---
 
