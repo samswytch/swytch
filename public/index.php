@@ -9,7 +9,38 @@ declare(strict_types=1);
  * API key — lives above it and is not servable.
  */
 
-require dirname(__DIR__) . '/src/bootstrap.php';
+/*
+ * Where the application lives, relative to this file.
+ *
+ * In the repository the docroot is public/ and the app is its sibling src/.
+ * On the server the docroot is plan.swytch.graphics/ and the app is
+ * coverapp/src/ beside it. Both are tried rather than either being assumed,
+ * so the same index.php works in both places and a wrong guess says so
+ * instead of producing a blank page.
+ */
+$coverBootstrap = null;
+foreach ([
+    dirname(__DIR__) . '/src/bootstrap.php',              // the repository
+    dirname(__DIR__) . '/coverapp/src/bootstrap.php',     // the server
+] as $candidate) {
+    if (is_file($candidate)) {
+        $coverBootstrap = $candidate;
+        break;
+    }
+}
+
+if ($coverBootstrap === null) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "The application files are not where this page expects them.\n\n";
+    echo "Looked for:\n";
+    echo "  " . dirname(__DIR__) . "/src/bootstrap.php\n";
+    echo "  " . dirname(__DIR__) . "/coverapp/src/bootstrap.php\n\n";
+    echo "Upload coverapp.zip so that coverapp/src/ sits beside this document root.\n";
+    exit;
+}
+
+require $coverBootstrap;
 
 $app = cover_boot();
 App::sendPrivacyHeaders();

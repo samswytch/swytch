@@ -96,24 +96,36 @@ php -r 'echo password_hash("the password here", PASSWORD_DEFAULT), "\n";'
 path is hard-coded to `/home/om44wfu4/appdata/config.php` so a stray environment
 variable cannot repoint the app at someone else's configuration.
 
+## Testing
+
+```bash
+COVER_CONFIG=/tmp/cover-config.php php tests/run.php      # 125 assertions
+COVER_CONFIG=/tmp/cover-config.php bash tests/mutate.sh /tmp/cover-config.php
+```
+
+`tests/run.php` needs no server and builds its own throwaway database.
+`tests/mutate.sh` breaks the source 43 ways and checks the suite notices each
+one — a mutation that SURVIVES is a gap in the tests, not in the app.
+
 ## Deploying
+
+**No shell? Read `DEPLOY.md`.** It is a step-by-step checklist for WePanel's file
+manager, and `bash bin/build-release.sh` produces the two zips it asks for.
+
+With SSH:
 
 ```bash
 ./deploy.sh            # dry run, shows what would change
 ./deploy.sh --live     # copy
 ```
 
-First deploy only, over SSH:
+Either way, the only thing that has to be put there by hand is
+`/home/om44wfu4/appdata/config.php`.
 
-```bash
-ssh -p 25088 om44wfu4@lhwp4008.webapps.net
-mkdir -p /home/om44wfu4/appdata/backups
-# put config.php in /home/om44wfu4/appdata/ and fill it in
-php /home/om44wfu4/coverapp/bin/setup-db.php
-```
-
-`setup-db.php` is safe to re-run, and upgrades a database made by an earlier version —
-it reports what it migrated.
+**The database creates itself.** There is no shell on the target host, so the app
+applies its own schema on the first request and upgrades an older one, tracked in
+SQLite's `user_version`. `bin/setup-db.php` does the same thing from a command line
+if you have one, and is safe to re-run.
 
 Then open **`/health`** and check every row reads ok. It reports on the configuration,
 the data directory, the database and its journal mode, the envelope, all six packs, the

@@ -9,3 +9,6 @@ config.php
 *.sqlite-shm
 *.log
 .DS_Store
+
+# dist/ is deliberately NOT ignored: DEPLOY.md asks for those zips and the
+# person deploying has no way to build them.

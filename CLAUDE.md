@@ -77,3 +77,10 @@ Things that follow from it, and that are easy to break by habit:
 - **Run it locally** with `php -S 127.0.0.1:8080 -t public dev-router.php` and
   `COVER_CONFIG` pointing at a config file. The built-in server has no `.htaccess`, so
   `dev-router.php` hands static files back to it.
+- **Run the tests before and after changing anything.** `php tests/run.php` needs no
+  server. `bash tests/mutate.sh <config>` then breaks the source deliberately and
+  checks the suite notices — if you add behaviour, add a mutation for it too, or the
+  test you just wrote may be asserting nothing.
+- **The database applies its own schema** on the first request of a deploy, because
+  the host has no shell. Bump `Migrate::SCHEMA_VERSION` when `db/schema.sql` changes
+  in a way an existing database has to catch up to.

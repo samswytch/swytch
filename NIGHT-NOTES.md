@@ -1,5 +1,13 @@
 # Night notes — 15/16 September 2026
 
+> **Follow-up session, 16 September.** Rule 2 changed to the reading you
+> proposed; the test suite is now real and is itself tested; the database
+> creates itself on the server; the assistant can be opened on a card; and
+> `DEPLOY.md` plus `dist/` are the no-shell deployment. Details at the bottom,
+> under "Follow-up session".
+
+# Original notes
+
 Overnight run. Phases 2 and 3 of `BRIEF.md` §13, the fourth log entry kind, and the
 stack rewrite of `CLAUDE.md` and §11. Everything is local and committed; nothing was
 deployed and nothing touched the server.
@@ -183,3 +191,132 @@ all four outcomes, marker stripping, script-tag escaping, refusal, truncation, 4
 | `public/assets/app.css` | styles for the new screens; phone layout |
 
 `content/` is byte-identical to the original upload. In `BRIEF.md`, only §11 changed.
+
+
+---
+
+# Follow-up session — 16 September 2026
+
+Four things asked for, plus a noindex header and the deployment package.
+
+## 1. Rule 2
+
+Changed to `(overdue OR due within two days) AND status != done`. You were
+right: my reading hid a card she had marked in progress yesterday and was due
+today with no publish time — it would only have surfaced once it went late.
+
+The SQL simplifies to `due_date <= $soon AND status != 'done'`, because overdue
+is any date before today and today is never after `$soon`. The reason line now
+names the status, since rule 2 admits work already under way and "due Friday"
+alone would not say whether she had started it: **"due today, in progress"**,
+**"overdue, was due Tuesday, in progress"**.
+
+Re-ran the fixture. The previously hidden card now appears; done work, work due
+beyond the window, and duplicates across rules are all still excluded.
+
+## 2. Testing the tests
+
+There is now a real suite — `tests/run.php`, 125 assertions, no server needed —
+and `tests/mutate.sh`, which breaks the source 43 different ways and checks the
+suite notices each one.
+
+**First run: four mutations survived and two assertions were testing the wrong
+thing.** All six are fixed. What was wrong:
+
+| Problem | Why it passed when it should not have |
+|---|---|
+| The cap test compared against `Plan::CAP` | It followed the constant anywhere it went. Now asserts the literal six from §5. |
+| The rule 3 test filled every slot with overdue cards | Rule 3 never ran. Now has room and three project cards, and asserts exactly one. |
+| The close-out boundary test had no card on the neighbouring day | A range off by a day still passed. Now has one, checked in summer *and* winter. |
+| `completed_at` was compared across two calls in the same second | A rewrite was invisible. Now backdated first. |
+| The markdown tests asserted `"javascript:"` never appears anywhere | Not the property that matters — a rejected scheme rendered as escaped text is harmless. Now assert no anchor is produced, and that a quote in an href cannot start a new attribute. |
+| The config test did not install the app's error handler | A missing key degraded quietly in the test but is fatal in the app. The test now runs under the same rule. |
+
+**All 43 mutations are caught now.** If you change behaviour, add a mutation for
+it — otherwise the test you just wrote may be asserting nothing.
+
+## 3. How the database gets created
+
+**None of your three was true.** There was only a CLI script, and there is no
+shell.
+
+Now: **the app applies its own schema on the first request**, tracked in
+SQLite's `user_version`, so every later request costs one pragma. It also
+creates `appdata/` rather than demanding it. Verified from a completely empty
+directory over HTTP alone — `/health` reports what it did.
+
+`bin/setup-db.php` still works if you ever do have a command line. The cron
+answer, if you ever want it, would be
+`/usr/bin/php /home/om44wfu4/coverapp/bin/setup-db.php` — but you should not
+need it.
+
+**That test found a real bug.** A `config.php` missing an optional key threw
+"Undefined array key" through the error handler and took the whole app down. A
+hand-edited config on a host with no shell will sometimes be missing a line, so
+both transport flags now default to off.
+
+## 4. Card context
+
+`/assistant?card=N` loads the card into a fourth system block. Tested three
+ways, as asked:
+
+- **With a card** — five system blocks, the card among them, and the brand
+  inherited *from the card* rather than from the browser.
+- **Without a card** — four blocks, unchanged from before.
+- **With an id that names nothing** — the page says so and offers the brand
+  picker; the endpoint refuses it rather than quietly answering without the
+  context it was asked for.
+
+The card block sits **after** the cache breakpoint, so one cached prefix still
+serves every card of a brand instead of a fresh one per card. The Asana link is
+left out — the model cannot follow it and would only be invited to pretend it
+had.
+
+A card screen now links straight to the assistant with the card attached.
+
+## noindex
+
+Sent from PHP on every response, again in `.htaccess`, plus a `robots.txt`. One
+person's working plan behind a shared password should never be in a search
+result.
+
+## Deployment
+
+`bash bin/build-release.sh` builds `dist/`:
+
+| File | Where |
+|---|---|
+| `plan.swytch.graphics.zip` | the document root |
+| `coverapp.zip` | `/home/om44wfu4/coverapp/` |
+| `password-hash.php` | upload only if needed, then delete |
+
+**`DEPLOY.md` is the checklist** — thirteen steps for WePanel's file manager,
+with a table of what each `/health` failure means. The cron line is:
+
+```
+17 2 * * * /usr/bin/php /home/om44wfu4/coverapp/bin/backup.php
+```
+
+`dist/` is committed on purpose. The person deploying has no way to build it.
+
+**Building the zips found a real breakage.** `index.php` resolved the app as
+`../src`, which is true in the repository and false on the server, where the app
+is `coverapp/src`. It now tries both and, if neither is there, says which paths
+it looked in instead of serving a blank page. I then unpacked the zips into the
+real three-directory layout and drove every screen in a browser from those files
+alone — that is what the "every screen clean from the deployed zips" check was.
+
+Two things I could not solve for you, and `DEPLOY.md` handles both:
+
+- **Generating the password hash needs a command line.** So there is a one-time
+  browser page that does it. It is not in either zip, and the checklist says to
+  delete it straight after.
+- **File managers hide dotfiles.** If `.htaccess` does not get extracted, the
+  front page works and everything else 404s. It is called out as the single most
+  likely thing to go wrong.
+
+## Still open
+
+Unchanged from the original notes: the `[decide]` items, phase 4, and replacing
+the seed data with the real three weeks. The subdomain and the certificate are
+now steps 1 and 9 of `DEPLOY.md`.
